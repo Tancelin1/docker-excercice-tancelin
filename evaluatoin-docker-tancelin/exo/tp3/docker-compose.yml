@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: eval-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - eval-network
+
+  adminer:
+    image: adminer:latest
+    container_name: eval-adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - eval-network
+
+volumes:
+  db-data:
+
+networks:
+  eval-network:
+    driver: bridge
