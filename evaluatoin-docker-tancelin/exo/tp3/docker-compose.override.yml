@@ -1,0 +1,15 @@
+services:
+  api:
+    volumes:
+      - ./api:/app            # Monte ton code source local pour hot reload
+      - /app/node_modules     # Évite d'écraser les node_modules du conteneur
+    ports:
+      - "3000:3000"           # Rendre le port 3000 accessible depuis l'hôte
+    labels:
+      environment: development
+
+  db:
+    ports:
+      - "5432:5432"           # Expose le port PostgreSQL pour debug depuis l'hôte
+    labels:
+      environment: development

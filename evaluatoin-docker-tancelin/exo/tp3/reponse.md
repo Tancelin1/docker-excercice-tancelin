@@ -29,18 +29,94 @@ Créez un fichier `docker-compose.yml` qui déploie :
 - Port 8080 exposé
 - Dépend de la base de données
 
+
+```
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: eval-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - eval-network
+
+  adminer:
+    image: adminer:latest
+    container_name: eval-adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - eval-network
+
+volumes:
+  db-data:
+
+networks:
+  eval-network:
+    driver: bridge
+
+```
+
+```
+.env
+
+POSTGRES_USER=evaluser
+POSTGRES_PASSWORD=evalpass
+POSTGRES_DB=evaldb
+
+```
+
+
 ### 1.2 Validation 
 
 - Lancez la stack avec `docker compose up -d`
-- Vérifiez que les deux services sont running
-- Connectez-vous à Adminer (http://localhost:8080)
-- Créez une table `users` avec les colonnes `id`, `name`, `email`
 
+- Vérifiez que les deux services sont running
+```
+docker compose ps
+```
+- Connectez-vous à Adminer (http://localhost:8080)
+```
+système postgreSQL
+serveur db
+utilisateur evaluser
+mdp evalpass
+bdd evaldb
+```
+- Créez une table `users` avec les colonnes `id`, `name`, `email`
+```
+-- Adminer 5.4.1 PostgreSQL 15.15 dump
+
+DROP TABLE IF EXISTS "users";
+CREATE TABLE "public"."users" (
+    "id" uuid NOT NULL,
+    "name" character varying NOT NULL,
+    "email" character varying NOT NULL
+)
+WITH (oids = false);
+
+
+-- 2026-02-09 13:36:01 UTC
+```
 **Questions :**
 
 - Comment voir les logs des deux services en temps réel ?
-- Comment accéder au CLI PostgreSQL depuis l'extérieur ?
+```
+docker compose logs -f
 
+```
+- Comment accéder au CLI PostgreSQL depuis l'extérieur ?
+```
+docker exec -it eval-db psql -U evaluser -d evaldb
+```
 ---
 
 ## Exercice 2 : Application multi-tiers 
@@ -143,13 +219,16 @@ Créez `api/package.json` :
 **Service 4 - Redis :**
 - Image : `redis:7-alpine`
 - Volume nommé pour la persistance
-
 ### 2.2 Réseau personnalisé 
 
 Configurez un réseau personnalisé `eval-network` de type bridge et assignez tous les services à ce réseau.
 
 **Question :** Quel est l'avantage d'un réseau personnalisé par rapport au réseau par défaut ?
+```
+il y a plusieur avantage
 
+l'isolation des containeur du réseaux de base, avoir le controle des nom du réseau et de la topologie de ce dernier, facilité la communication sécurisé entre les servise.
+```
 ### 2.3 Script d'initialisation DB
 
 Créez un script SQL `db/init.sql` qui sera exécuté au premier démarrage :
@@ -267,15 +346,28 @@ Créez `nginx/index.html` :
 ### 3.2 Test complet 
 
 - Relancez toute la stack
+```
+docker compose up -d --build
+```
 - Accédez à http://localhost
 - Testez les boutons de l'interface
+```
+si les donnée ne s'affiche pas, il faut supprimée le volume et refiarel e compose
+docker compose down -v
+docker compose up -d
+```
 - Vérifiez que le cache Redis fonctionne (appels répétés à Stats)
-
 **Questions :**
 
 - Comment vérifier que Redis met bien en cache les données ?
-- Que se passe-t-il si vous arrêtez le service Redis ?
+```
+curl http://localhost:3000/api/stats
 
+```
+- Que se passe-t-il si vous arrêtez le service Redis ?
+```
+redis se ferme, l'url api/stats n'est donc plus acccessible, ne renvoyant pas erreur, les timeout peuvent arrivée lors de la requête de cette derniere
+```
 ---
 
 ## Exercice 4 : Environnements 
@@ -297,9 +389,24 @@ Modifiez le `docker-compose.yml` pour utiliser ces variables.
 
 Créez un fichier `docker-compose.override.yml` pour le développement :
 - Montez le code source de l'API en volume (hot reload)
-- Exposez le port PostgreSQL (5432)
-- Ajoutez des labels pour identifier l'environnement
+```
+volumes:
+  - ./api:/app
+  - /app/node_modules
 
+```
+- Exposez le port PostgreSQL (5432)
+```
+ports:
+  - "5432:5432"
+
+```
+- Ajoutez des labels pour identifier l'environnement
+```
+labels:
+  environment: development
+
+```
 ---
 
 ## Structure finale attendue
